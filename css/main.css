@@ -46,11 +46,16 @@ main {
   justify-content: center;
   color: white;
   padding: 10px 15px 10px 15px;
-  background-color: coral;
+  background-color: var(--button-primary);
   border-radius: 25px;
   position: fixed;
   bottom: 100px;
   right: 25px;
   font-size: 13px;
   box-shadow: rgba(100, 100, 111, 0.2) 0px 7px 29px 0px;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+.write-btn:hover {
+  background-color: var(--button-hover);
 }
