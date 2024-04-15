@@ -11,9 +11,20 @@ con = sqlite3.connect('db.db',check_same_thread=False)
 # 기존에 프로젝트 내부에 만든 db와 연결할 있게끔 하는 코드  
 cur = con.cursor()
 # 내부에서 sql문으로 변경한 후에 데이터베이스오 접속하여 값을 가지고 오는것
-
+cur.execute(f"""
+            CREATE TABLE IF NOT EXISTS items(
+                id INTEGER PRIMARY KEY,
+                title TEXT NOT NULL,
+                image BLOB,
+                price INTEGER NOT NULL,
+                description TEXT,
+                place TEXT NOT NULL
+            );
 app = FastAPI()
 
+
+
+            """)
 @app.post("/items")
 async def create_item(image:UploadFile,
                 title:Annotated[str,Form()],
