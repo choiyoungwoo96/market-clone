@@ -1,5 +1,4 @@
 const form = document.querySelector("#signup-form");
-
 const checkPassword = () => {
   const formdata = new FormData(form);
   const password1 = formdata.get("password");

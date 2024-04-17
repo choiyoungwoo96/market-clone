@@ -1,8 +1,10 @@
-from fastapi import FastAPI,UploadFile,Form,Request
+from fastapi import FastAPI,UploadFile,Form,Request,Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse,Response
 from fastapi.templating import Jinja2Templates
 from fastapi.encoders import jsonable_encoder
+from fastapi_login import LoginManager
+from fastapi_login.exceptions import InvalidCredentialsException
 from typing import Annotated
 import sqlite3 
 # sqllite3를 연결할 수 있는 라이브러리
@@ -23,8 +25,57 @@ cur.execute(f"""
         """)
 app = FastAPI()
 
+#시크릿키를 생성하는 명렁어
+SERCRET = "super-coding"
+manager = LoginManager(SERCRET,'/login')
 
+#query_user를 조죄할 떄 토큰도 같이 발급을 한다.
+@manager.user_loader()
+def query_user(data):
+    WHERE_STATEMENTS = f'id="{data}"'
+    if type(data) == dict:
+        WHERE_STATEMENTS = f'id="{data['id']}"'
+    con.row_factory = sqlite3.Row
+    cur = con.cursor()
+    user = cur.execute(f"""
+                       SELECT * FROM users WHERE {WHERE_STATEMENTS}
+                       """).fetchone()
+    return user
 
+@app.post("/login")
+def login(id:Annotated[str,Form()],
+        password:Annotated[str,Form()]):
+    user = query_user(id)
+    if not user:
+        #raise : 파이썬에서 에러메세지를 보내기 위한 것 
+        #InvalidCredentialsException
+        raise InvalidCredentialsException
+    elif password != user['password']:
+        raise InvalidCredentialsException
+    #토큰 만들어주는 코드()
+    acces_token = manager.create_access_token(data={
+        'sub' :{
+            'id' : user['id'],
+            'name' : user['name'],
+            'email': user['email']
+        } 
+    })
+    
+    return {"acces_token":acces_token}
+    
+@app.post('/signup')
+def signup(id:Annotated[str,Form()],
+           password:Annotated[str,Form()],
+           name:Annotated[str,Form()],
+           email:Annotated[str,Form()]
+           ):
+    cur.execute(f"""
+                INSERT INTO users(id,name,email,password)
+                VALUES ('{id}','{name}','{email}','{password}')
+                """)
+    con.commit()
+    return "200"
+    
             
 @app.post("/items")
 async def create_item(image:UploadFile,
@@ -43,7 +94,8 @@ async def create_item(image:UploadFile,
     return "200"
 
 @app.get("/items")
-async def get_items():
+#user=Depends(manager) 로그인이 유지되고 있을때
+async def get_items(user=Depends(manager)):
     # 컬럼명까지 가지고올수 있도록 명령어
     con.row_factory = sqlite3.Row
     # db 현재 위치는 업데이틀 랗기 위한 것
@@ -65,18 +117,6 @@ async def get_image(item_id):
                               """).fetchone()[0]
     return Response(content=bytes.fromhex(image_bytes))
 
-@app.post('/signup')
-def signup(id:Annotated[str,Form()],
-           password:Annotated[str,Form()],
-           name:Annotated[str,Form()],
-           email:Annotated[str,Form()]
-           ):
-    cur.execute(f"""
-                INSERT INTO users(id,name,email,password)
-                VALUES ('{id}','{name}','{email}','{password}')
-                """)
-    con.commit()
-    return "200"
-    
+
 
 app.mount("/", StaticFiles(directory="frontend",html="True"), name="frontend")
